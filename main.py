@@ -13,6 +13,7 @@ import logging
 logging.basicConfig(handlers=[logging.FileHandler(logname), logging.StreamHandler()], level=logging.INFO, format="%(asctime)s [%(levelname)s] [{}] %(message)s".format(channelName))
 
 import os
+import re
 import string
 import time
 import datetime
@@ -62,6 +63,14 @@ def check_generate_path(pathPrefix):
         logging.info('Creating directory: {}'.format(dir))
         os.makedirs(dir)
 
+def check_full_path(fpath, fname, iter):
+    filename = fname + str(iter)
+    for filepath in os.listdir(fpath):
+        if filename in filepath:
+            iter += 1
+            return check_full_path(fpath, fname, iter)
+    return iter
+
 if __name__ == '__main__':
     if not twitchClientId or not twitchClientSecret:
         logging.critical('Missing TWITCH_LIVELEECH_CLIENT_ID or TWITCH_LIVELEECH_CLIENT_SECRET env variable(s).')
@@ -99,9 +108,13 @@ if __name__ == '__main__':
         title = ''.join(c for c in title if c in validChars)
 
         date = datetime.date.today()
-        season = "Season " + str(date.strftime("%y%m"))
-        episode = str(date.day) + "01" #need to find a way to increment this value for multiple streams in the same day
-        fullPath = '{}/{}/{}_{}_{}.mp4'.format(finalPath, season, episode, title, int(time.time()))
+        season = date.strftime("%y%m")
+        day = str(date.day)
+        ctime = int(time.time())
+        partPath = '{}/Season {}/'.format(finalPath, season)
+        partFile = '{} - s{}e{}'.format(channelName, season, day)
+        partIter = check_full_path(partPath, partFile, 1)
+        fullPath = '{}{}{} - {}.mp4'.format(partPath, partFile, partIter, title)
         logging.info('Muxing file {} to final path {}'.format(fullDownloadPath, fullPath))
         mux = ffmpeg.input(fullDownloadPath).output(fullPath, vcodec='copy', acodec='copy')
         out, err = ffmpeg.run(mux, capture_stdout=True, capture_stderr=True)
