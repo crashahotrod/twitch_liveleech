@@ -1,14 +1,16 @@
 # twitch_liveleech - Copyright 2022 IRLToolkit Inc.
-
 # Usage: twitch_liveleech.py [channel] [dump path] [final path]
+# Modified by crashahotrod to make more plex friendly and rename logs for multi-channel support
 
 import sys
 channelName = sys.argv[1]
 downloadPath = sys.argv[2]
 finalPath = sys.argv[3]
-
+logname= str(channelName) + ".log"
+muxlogname = str(channelName) + "_mux.log"
+downloadlogname = str(channelName) + "_download.log"
 import logging
-logging.basicConfig(handlers=[logging.FileHandler('twitch_ll.log'), logging.StreamHandler()], level=logging.INFO, format="%(asctime)s [%(levelname)s] [{}] %(message)s".format(channelName))
+logging.basicConfig(handlers=[logging.FileHandler(logname), logging.StreamHandler()], level=logging.INFO, format="%(asctime)s [%(levelname)s] [{}] %(message)s".format(channelName))
 
 import os
 import string
@@ -87,7 +89,7 @@ if __name__ == '__main__':
         logging.info('Writing download to: {}...'.format(fullDownloadPath))
         stream = ffmpeg.input(streams['best'].url).output(fullDownloadPath, vcodec='copy', acodec='aac')
         out, err = ffmpeg.run(stream, capture_stdout=True, capture_stderr=True)
-        append_file('twitch_ll_download.log', err)
+        append_file(downloadlogname, err)
         logging.info('Stream ended!')
 
         check_generate_path(finalPath)
@@ -97,9 +99,11 @@ if __name__ == '__main__':
         title = ''.join(c for c in title if c in validChars)
 
         date = datetime.date.today()
-        fullPath = '{}/{}_{}/{}_{}_{}.mp4'.format(finalPath, months[date.month - 1], date.year, date.day, title, int(time.time()))
+        season = "Season " + str(date.strftime("%y%m"))
+        episode = str(date.day) + "01" #need to find a way to increment this value for multiple streams in the same day
+        fullPath = '{}/{}/{}_{}_{}.mp4'.format(finalPath, season, episode, title, int(time.time()))
         logging.info('Muxing file {} to final path {}'.format(fullDownloadPath, fullPath))
         mux = ffmpeg.input(fullDownloadPath).output(fullPath, vcodec='copy', acodec='copy')
         out, err = ffmpeg.run(mux, capture_stdout=True, capture_stderr=True)
-        append_file('twitch_ll_mux.log', err)
+        append_file(muxlogname, err)
         logging.info('Done.')
