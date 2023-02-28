@@ -23,6 +23,8 @@ import ffmpeg
 
 twitchClientId = os.getenv('TWITCH_LIVELEECH_CLIENT_ID')
 twitchClientSecret = os.getenv('TWITCH_LIVELEECH_CLIENT_SECRET')
+#Disable Ads on Subscribed channels https://streamlink.github.io/cli/plugins/twitch.html#authentication
+twitchUserAuthToken = os.getenv('TWITCH_LIVELEECH_USER_AUTH_TOKEN')
 
 months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
 sleepDuration = 45
@@ -31,6 +33,8 @@ sl = streamlink.Streamlink()
 sl.set_plugin_option('twitch', 'disable-hosting', True)
 sl.set_plugin_option('twitch', 'disable-ads', True)
 sl.set_plugin_option('twitch', 'disable-reruns', True)
+twitchAPIheader={'Authorization' : twitchUserAuthToken}
+sl.set_plugin_option('twitch', 'api-header', twitchAPIheader)
 
 def append_file(fileName, data):
     with open(fileName, 'a') as f:
@@ -64,6 +68,9 @@ def check_generate_path(pathPrefix):
         os.makedirs(dir)
 
 def check_full_path(fpath, fname, iter):
+    if not os.path.exists(dir):
+        logging.info('Creating directory: {}'.format(dir))
+        os.makedirs(fpath)
     filename = fname + str(iter)
     for filepath in os.listdir(fpath):
         if filename in filepath:
