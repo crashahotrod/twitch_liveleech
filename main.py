@@ -24,16 +24,16 @@ import ffmpeg
 twitchClientId = os.getenv('TWITCH_LIVELEECH_CLIENT_ID')
 twitchClientSecret = os.getenv('TWITCH_LIVELEECH_CLIENT_SECRET')
 #Disable Ads on Subscribed channels https://streamlink.github.io/cli/plugins/twitch.html#authentication
-twitchUserAuthToken = os.getenv('TWITCH_LIVELEECH_USER_AUTH_TOKEN')
+twitchAuthorization = os.getenv('TWITCH_LIVELEECH_AUTHORIZATION')
 
 months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
-sleepDuration = 45
+sleepDuration = 35
 
 sl = streamlink.Streamlink()
 sl.set_plugin_option('twitch', 'disable-hosting', True)
 sl.set_plugin_option('twitch', 'disable-ads', True)
 sl.set_plugin_option('twitch', 'disable-reruns', True)
-twitchAPIheader={'Authorization' : twitchUserAuthToken}
+twitchAPIheader={'Authorization' : twitchAuthorization}
 sl.set_plugin_option('twitch', 'api-header', twitchAPIheader)
 
 def append_file(fileName, data):
@@ -58,7 +58,9 @@ def get_channel_title():
         logging.warning('Failed to get channel title due to HTTP error. Code: {} | Text: {}'.format(req.status_code, req.text))
         return 'UNKNOWN TITLE'
     data = req.json()
-    return data['data'][0]['title']
+    title = data['data'][0]['title']
+    logging.info('Found Video Title: {}'.format(title))
+    return title
 
 def check_generate_path(pathPrefix):
     date = datetime.date.today()
@@ -68,8 +70,9 @@ def check_generate_path(pathPrefix):
         os.makedirs(dir)
 
 def check_full_path(fpath, fname, iter):
-    if not os.path.exists(dir):
-        logging.info('Creating directory: {}'.format(dir))
+    logging.info('Checking full path: {}'.format(fpath))
+    if not os.path.exists(fpath):
+        logging.info('Creating directory: {}'.format(fpath))
         os.makedirs(fpath)
     filename = fname + str(iter)
     for filepath in os.listdir(fpath):
@@ -108,19 +111,22 @@ if __name__ == '__main__':
         append_file(downloadlogname, err)
         logging.info('Stream ended!')
 
-        check_generate_path(finalPath)
+        #check_generate_path(finalPath)
 
         title = get_channel_title()
         validChars = "-.() %s%s" % (string.ascii_letters, string.digits)
         title = ''.join(c for c in title if c in validChars)
-
+        logging.info('Modified Title: {}'.format(title))
         date = datetime.date.today()
         season = date.strftime("%y%m")
         day = str(date.day)
         ctime = int(time.time())
         partPath = '{}/Season {}/'.format(finalPath, season)
+        logging.info('Part Path: {}'.format(partPath))
         partFile = '{} - s{}e{}'.format(channelName, season, day)
+        logging.info('Part File: {}'.format(partFile))
         partIter = check_full_path(partPath, partFile, 1)
+        logging.info('Part Iter: {}'.format(partIter))
         fullPath = '{}{}{} - {}.mp4'.format(partPath, partFile, partIter, title)
         logging.info('Muxing file {} to final path {}'.format(fullDownloadPath, fullPath))
         mux = ffmpeg.input(fullDownloadPath).output(fullPath, vcodec='copy', acodec='copy')
