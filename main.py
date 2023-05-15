@@ -7,13 +7,13 @@
     #Add kick.com support
 
 import sys
-mode = sys.argv[1] #kick or twitch
-channelName = sys.argv[2]
+mode = str(sys.argv[1]) #kick or twitch
+channelName = str(sys.argv[2])
 downloadPath = sys.argv[3]
 finalPath = sys.argv[4]
-logname= str(channelName) + ".log"
-muxlogname = str(channelName) + "_mux.log"
-downloadlogname = str(channelName) + "_download.log"
+logname= channelName + "_" + mode + ".log"
+muxlogname = channelName + "_" + mode + "_mux.log"
+downloadlogname = channelName + "_" + mode + "_download.log"
 import logging
 logging.basicConfig(handlers=[logging.FileHandler(logname), logging.StreamHandler()], level=logging.INFO, format="%(asctime)s [%(levelname)s] [{}] %(message)s".format(channelName))
 
