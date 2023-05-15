@@ -74,7 +74,7 @@ def get_channel_title(old):
         return title
     elif(mode == "kick"):
         scraper = cloudscraper.create_scraper()
-        url = ("https://kick.com/api/v1/channels/bbjess")
+        url = ('https://kick.com/api/v1/channels/{}'.format(channelName))
         req = scraper.get(url)
         if req.status_code != requests.codes.ok:
             logging.warning('Failed to get channel title due to HTTP error. Code: {} | Text: {}'.format(req.status_code, req.text))
@@ -126,7 +126,12 @@ if __name__ == '__main__':
             if(mode == "twitch"):
                 streams = sl.streams('https://twitch.tv/{}'.format(channelName))
             elif(mode == "kick"):
-                streams = sl.streams('https://kick.com/{}'.format(channelName))
+                scraper = cloudscraper.create_scraper()
+                url = ('https://kick.com/api/v1/channels/{}'.format(channelName))
+                req = scraper.get(url)
+                data = req.json()
+                #streams = sl.streams('https://kick.com/{}'.format(channelName))
+                streams = sl.streams(data['playback_url'])
             else:
                 logging.critical("Invalid mode argument please specify kick or twitch")
                 os._exit(1)
