@@ -80,8 +80,10 @@ def get_channel_title(old):
             logging.warning('Failed to get channel title due to HTTP error. Code: {} | Text: {}'.format(req.status_code, req.text))
             return 'UNKNOWN TITLE'
         data = req.json()
+        req.close()
         if "session_title" in data['livestream']:
             title = data['livestream']['session_title']
+            logging.info('Found Video Title: {}'.format(title))
             return(title)
         else:
             if (old != "") or (old != "UNKNOWN TITLE"):
@@ -118,6 +120,7 @@ if __name__ == '__main__':
         os._exit(1)
 
     while True:
+        success = False
         logging.info('Sleeping for {} seconds...'.format(sleepDuration))
         time.sleep(sleepDuration)
         logging.info('Done.')
@@ -126,20 +129,22 @@ if __name__ == '__main__':
             if(mode == "twitch"):
                 streams = sl.streams('https://twitch.tv/{}'.format(channelName))
             elif(mode == "kick"):
-                scraper = cloudscraper.create_scraper()
-                url = ('https://kick.com/api/v1/channels/{}'.format(channelName))
-                req = scraper.get(url)
-                data = req.json()
-                #streams = sl.streams('https://kick.com/{}'.format(channelName))
-                streams = sl.streams(data['playback_url'])
+                #scraper = cloudscraper.create_scraper()
+                #url = ('https://kick.com/api/v1/channels/{}'.format(channelName))
+                #req = scraper.get(url)
+                #data = req.json()
+                streams = sl.streams('https://kick.com/{}'.format(channelName))
+                #streams = sl.streams(data['playback_url'])
             else:
                 logging.critical("Invalid mode argument please specify kick or twitch")
                 os._exit(1)
         except streamlink.exceptions.PluginError:
             logging.error('Failed to fetch stream via streamlink.')
+            #req.close()
             continue
         except Exception as e:
             logging.warning('Failed to record stream. Code: {}'.format(e))
+            #req.close()
             continue
         if not streams:
             logging.info('No streams are available.')
@@ -153,6 +158,8 @@ if __name__ == '__main__':
         logging.info('Writing download to: {}...'.format(fullDownloadPath))
         stream = ffmpeg.input(streams['best'].url).output(fullDownloadPath, vcodec='copy', acodec='aac')
         out, err = ffmpeg.run(stream, capture_stdout=True, capture_stderr=True)
+        if err.returncode == 0:
+            success = True
         append_file(downloadlogname, err)
         logging.info('Stream ended!')
 
@@ -176,5 +183,7 @@ if __name__ == '__main__':
         logging.info('Muxing file {} to final path {}'.format(fullDownloadPath, fullPath))
         mux = ffmpeg.input(fullDownloadPath).output(fullPath, vcodec='copy', acodec='copy')
         out, err = ffmpeg.run(mux, capture_stdout=True, capture_stderr=True)
+        if (err.returncode == 0) and success:
+            os.remove(fullDownloadPath)
         append_file(muxlogname, err)
         logging.info('Done.')
