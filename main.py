@@ -105,6 +105,7 @@ def get_channel_title(old):
         os._exit(1)
 
 def check_generate_dir(title):
+    output = []
     date = datetime.date.today()
     season = date.strftime("%y%m")
     day = str(date.day)
@@ -112,10 +113,12 @@ def check_generate_dir(title):
     partFile = '{} - s{}e{}'.format(channelName, season, day)
     partIter = check_full_path(partPath, partFile, 1)
     fullPath = '{}{}{} - {}.mp4'.format(partPath, partFile, partIter, title)
+    output[0] = fullPath
+    output[1] = partIter
     if not os.path.exists(dir):
         logging.info('Creating directory: {}'.format(dir))
         os.makedirs(dir)
-    return fullPath
+    return output
 
 def check_full_path(fpath, fname, iter):
     logging.info('Checking full path: {}'.format(fpath))
@@ -261,7 +264,8 @@ def main():
             logging.debug('Current stream title: {}'.format(title))
         except requests.exceptions.ConnectionError:
             pass
-        dir, path = check_generate_dir(title)
+        gdir = check_generate_dir(title)
+        dir, path = gdir[0]
 
         outputOptions = {
             'vcodec': 'copy',
@@ -283,7 +287,16 @@ def main():
             launch_fragment_watcher(segmentFileName)
 
         logging.info('Writing download to: {}...'.format(path))
-        stream = ffmpeg.input(streams['best'].url).output(path, **outputOptions)
+        date = datetime.date.today()
+        metad = {
+            "creation_time" : date.strftime("%y/%m/%d %H:%M:%S"),
+            "title" : title,
+            "author" : channelName,
+            "year" : str(date.year),
+            "show" : 'Season {}'.format(date.strftime("%y%m")),
+            "episode_id" : str(date.day) + gdir[1]
+        }
+        stream = ffmpeg.input(streams['best'].url).output(path, metadata = metad, **outputOptions)
         cmd = ffmpeg.compile(stream, 'ffmpeg', overwrite_output = True)
         logFile = open('twitch_ll_download_{}.log'.format(channelName), 'a')
         try:
