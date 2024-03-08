@@ -38,14 +38,6 @@ REMUX_REMOVE_FRAGMENTED_FILE = True
 TEMP_FILE_DIRECTORY = '/tmp' # Segment list file stored here, segments themselves use outputPath
 TEMP_FILE_PREFIX = 'vod_downloader_{}_'.format(channelName)
 
-CHECK_SLEEP_DURATION = 60 # Seconds
-VOD_SEGMENT_DURATION = 3600 * 6 # 6 Hours
-FMP4_FRAGMENT_DURATION = 4 # Seconds
-REMUX_AFTER_DOWNLOAD = True
-REMUX_REMOVE_FRAGMENTED_FILE = True
-TEMP_FILE_DIRECTORY = '/tmp' # Segment list file stored here, segments themselves use outputPath
-TEMP_FILE_PREFIX = 'vod_downloader_{}_'.format(channelName)
-
 twitchClientId = os.getenv('TWITCH_LIVELEECH_CLIENT_ID')
 twitchClientSecret = os.getenv('TWITCH_LIVELEECH_CLIENT_SECRET')
 twitchApiHeader = os.getenv('TWITCH_LIVELEECH_API_HEADER') or '' #Disable Ads on Subscribed channels https://streamlink.github.io/cli/plugins/twitch.html#authentication
@@ -58,12 +50,8 @@ fragmentWatcherStopped = threading.Event()
 
 def append_file(fileName, data):
     with open(fileName, 'a') as f:
-        f.write('\n======================================================================\n')
-        f.write(data)
-
-def make_tmp_filename(extension: str = 'txt'):
-    fileName = '{}{}.{}'.format(TEMP_FILE_PREFIX, shortuuid.uuid(), extension)
-    return os.path.join(TEMP_FILE_DIRECTORY, fileName)
+        f.write('\n')
+        f.write(data.decode())
 
 def make_tmp_filename(extension: str = 'txt'):
     fileName = '{}{}.{}'.format(TEMP_FILE_PREFIX, shortuuid.uuid(), extension)
