@@ -27,7 +27,8 @@ import requests
 import shortuuid
 import streamlink
 import ffmpeg
-import cloudscraper
+import re
+#import cloudscraper
 
 CHECK_SLEEP_DURATION = 60 # Seconds
 VOD_SEGMENT_DURATION = 3600 * 6 # 6 Hours
@@ -39,7 +40,7 @@ TEMP_FILE_PREFIX = 'vod_downloader_{}_'.format(channelName)
 
 twitchClientId = os.getenv('TWITCH_LIVELEECH_CLIENT_ID')
 twitchClientSecret = os.getenv('TWITCH_LIVELEECH_CLIENT_SECRET')
-twitchApiheader = os.getenv('TWITCH_LIVELEECH_API_HEADER') or '' #Disable Ads on Subscribed channels https://streamlink.github.io/cli/plugins/twitch.html#authentication
+twitchApiHeader = os.getenv('TWITCH_LIVELEECH_API_HEADER') or '' #Disable Ads on Subscribed channels https://streamlink.github.io/cli/plugins/twitch.html#authentication
 
 months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
 exit = False # This should be mutexed. TODO I guess.
@@ -75,8 +76,9 @@ def get_channel_title(old):
             return 'UNKNOWN TITLE'
         data = req.json()
         title = data['data'][0]['title']
-        validChars = "-.() %s%s" % (string.ascii_letters, string.digits)
+        validChars = "-() %s%s" % (string.ascii_letters, string.digits)
         title = ''.join(c for c in title if c in validChars)
+        title = re.sub(' +', ' ', title)
         logging.info('Found Video Title: {}'.format(title))
         return title
     elif(mode == "kick"):
@@ -113,10 +115,10 @@ def check_generate_dir(title):
     partFile = '{} - s{}e{}'.format(channelName, season, day)
     partIter = check_full_path(partPath, partFile, 1)
     fullPath = '{}{}{} - {}.mp4'.format(partPath, partFile, partIter, title)
-    output[0] = fullPath
-    output[1] = partIter
-    if not os.path.exists(dir):
-        logging.info('Creating directory: {}'.format(dir))
+    output.append(fullPath)
+    output.append(partIter)
+    if not os.path.exists(partPath):
+        logging.info('Creating directory: {}'.format(partPath))
         os.makedirs(dir)
     return output
 
@@ -216,19 +218,20 @@ def main():
         options.set('disable-ads', True)
         options.set('disable-reruns', True)
         if twitchApiHeader:
-            req = requests.get("https://id.twitch.tv/oauth2/validate", headers={'Authorization': twitchApiHeader})
+            h = {'Authorization': "OAuth " + twitchApiHeader}
+            req = requests.get("https://id.twitch.tv/oauth2/validate", headers = h)
             if req.status_code == 200:
-                options.set('api-header', {'Authorization': twitchApiHeader})_, pluginClass, resolvedUrl = session.resolve_url('https://twitch.tv/{}'.format(channelName))
+                options.set('api-header', {'Authorization': twitchApiHeader})
+                _, pluginClass, resolvedUrl = session.resolve_url('https://twitch.tv/{}'.format(channelName))
+                plugin = pluginClass(session, resolvedUrl, options)
             else:
                 logging.warning('User Token Expired/Invalid. Code: {} | Text: {}'.format(req.status_code, req.text))
-            
     elif(mode == "kick"):
-        resolvedUrl = session.resolve_url('https://kick.com/{}'.format(channelName))
-        pass
+        _, pluginClass, resolvedUrl = session.resolve_url('https://kick.com/{}'.format(channelName))
+        plugin = pluginClass(session, resolvedUrl, options)
     else:
         logging.critical("Invalid mode argument please specify kick or twitch")
         os._exit(1)
-    plugin = pluginClass(session, resolvedUrl, options)
 
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -265,7 +268,8 @@ def main():
         except requests.exceptions.ConnectionError:
             pass
         gdir = check_generate_dir(title)
-        dir, path = gdir[0]
+        dir = gdir[0]
+        path = gdir[0]
 
         outputOptions = {
             'vcodec': 'copy',
@@ -286,16 +290,9 @@ def main():
             path = path.replace('%03d', '%03d.fragmented')
             launch_fragment_watcher(segmentFileName)
 
-        logging.info('Writing download to: {}...'.format(path))
+        logging.info('Writing download to: {}'.format(path))
         date = datetime.date.today()
-        metad = {
-            "creation_time" : date.strftime("%y/%m/%d %H:%M:%S"),
-            "title" : title,
-            "author" : channelName,
-            "year" : str(date.year),
-            "show" : 'Season {}'.format(date.strftime("%y%m")),
-            "episode_id" : str(date.day) + gdir[1]
-        }
+        metad = "creation_time={},title={},author={},year={},show=Season {},episode_id={}".format(date.strftime("%y/%m/%d %H:%M:%S"),title,channelName,str(date.year),date.strftime("%y%m"),str(date.day) + str(gdir[1]))
         stream = ffmpeg.input(streams['best'].url).output(path, metadata = metad, **outputOptions)
         cmd = ffmpeg.compile(stream, 'ffmpeg', overwrite_output = True)
         logFile = open('twitch_ll_download_{}.log'.format(channelName), 'a')
