@@ -76,7 +76,7 @@ def get_channel_title(old):
             return 'UNKNOWN TITLE'
         data = req.json()
         title = data['data'][0]['title']
-        validChars = "-() %s%s" % (string.ascii_letters, string.digits)
+        validChars = "-.() %s%s" % (string.ascii_letters, string.digits)
         title = ''.join(c for c in title if c in validChars)
         title = re.sub(' +', ' ', title)
         logging.info('Found Video Title: {}'.format(title))
@@ -114,12 +114,13 @@ def check_generate_dir(title):
     partPath = '{}/Season {}/'.format(outputPath, season)
     partFile = '{} - s{}e{}'.format(channelName, season, day)
     partIter = check_full_path(partPath, partFile, 1)
-    fullPath = '{}{}{} - {}.mp4'.format(partPath, partFile, partIter, title)
+    fullPath = '{}{}{} - {}%03d.mp4'.format(partPath, partFile, partIter, title)
     output.append(fullPath)
     output.append(partIter)
+    output.append(partPath)
     if not os.path.exists(partPath):
         logging.info('Creating directory: {}'.format(partPath))
-        os.makedirs(dir)
+        os.makedirs(partPath)
     return output
 
 def check_full_path(fpath, fname, iter):
@@ -268,7 +269,7 @@ def main():
         except requests.exceptions.ConnectionError:
             pass
         gdir = check_generate_dir(title)
-        dir = gdir[0]
+        dir = gdir[2]
         path = gdir[0]
 
         outputOptions = {
