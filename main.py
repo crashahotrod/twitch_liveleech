@@ -39,7 +39,7 @@ TEMP_FILE_PREFIX = 'vod_downloader_{}_'.format(channelName)
 
 twitchClientId = os.getenv('TWITCH_LIVELEECH_CLIENT_ID')
 twitchClientSecret = os.getenv('TWITCH_LIVELEECH_CLIENT_SECRET')
-twitchAPIheader = os.getenv('TWITCH_LIVELEECH_API_HEADER') or '' #Disable Ads on Subscribed channels https://streamlink.github.io/cli/plugins/twitch.html#authentication
+twitchApiheader = os.getenv('TWITCH_LIVELEECH_API_HEADER') or '' #Disable Ads on Subscribed channels https://streamlink.github.io/cli/plugins/twitch.html#authentication
 
 months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
 exit = False # This should be mutexed. TODO I guess.
@@ -304,3 +304,5 @@ if __name__ == '__main__':
     if not twitchClientId or not twitchClientSecret:
         logging.critical('Missing TWITCH_LIVELEECH_CLIENT_ID or TWITCH_LIVELEECH_CLIENT_SECRET env variable(s).')
         os._exit(1)
+
+    main()
